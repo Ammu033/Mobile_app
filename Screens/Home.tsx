@@ -2,10 +2,22 @@ import { StyleSheet, View, ScrollView, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Button from '../Components/Button';
 import ImageSlider from '../Components/slider';
+import { useNavigation } from '@react-navigation/native';
+
 
 export default function Home() {
+  const navigation = useNavigation();
   const handleButtonPress = (buttonName: string) => {
     console.log(`${buttonName} pressed`);
+     if (buttonName === 'Calendar') {
+      navigation.navigate('Calendar');
+    } else if (buttonName === 'Report') {
+      navigation.navigate('Report');
+    } else if (buttonName === 'Form') {
+      navigation.navigate('Form');
+    } else if (buttonName === 'News') {
+      navigation.navigate('News');
+    }
   };
 
   return (
