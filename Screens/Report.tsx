@@ -1,148 +1,377 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  StatusBar,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
 
-export default function Report() {
-  const navigation = useNavigation();
+export default function Report({ navigation }: any) {
+  const [category, setCategory] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [postcode, setPostcode] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+
+  const categories = [
+    { id: 'personal', label: 'Personal', icon: 'account' },
+    { id: 'community', label: 'Community', icon: 'town-hall' },
+    { id: 'urgent', label: 'Urgent', icon: 'alert' },
+  ];
+
+  const handleImagePick = () => {
+    // Simulated image picker
+    Alert.alert('Photo Upload', 'Camera/Gallery would open here');
+    setImage('photo-selected');
+  };
+
+  const handleLocationPick = () => {
+    Alert.alert('Location', 'Map picker would open here');
+  };
+
+  const handleSubmit = () => {
+    if (!category || !title || !description) {
+      Alert.alert('Error', 'Please fill all required fields');
+      return;
+    }
+    
+    Alert.alert(
+      'Success',
+      'Your complaint has been submitted successfully!',
+      [{ text: 'OK', onPress: () => navigation.goBack() }]
+    );
+  };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#1a2456" />
+      
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={28} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reports</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Report an Issue</Text>
+        <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.card}>
-          <MaterialCommunityIcons name="file-chart" size={48} color="#3d46b4" />
-          <Text style={styles.cardTitle}>Your Reports</Text>
-          <Text style={styles.cardText}>View detailed reports and analytics</Text>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Category Selection */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Category *</Text>
+            <View style={styles.categoryContainer}>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryButton,
+                    category === cat.id && styles.categoryButtonActive,
+                  ]}
+                  onPress={() => setCategory(cat.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={cat.icon as any}
+                    size={24}
+                    color={category === cat.id ? '#fff' : '#252d6e'}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryLabel,
+                      category === cat.id && styles.categoryLabelActive,
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        <View style={styles.reportList}>
-          {[
-            { title: 'Monthly Report', date: 'Jan 2024', icon: 'file-pdf-box' },
-            { title: 'Quarterly Report', date: 'Q1 2024', icon: 'chart-box' },
-            { title: 'Annual Report', date: '2023', icon: 'file-document' },
-          ].map((report, index) => (
-            <TouchableOpacity key={index} style={styles.reportItem}>
-              <View style={styles.reportIcon}>
-                <MaterialCommunityIcons name={report.icon as any} size={32} color="#fff" />
-              </View>
-              <View style={styles.reportDetails}>
-                <Text style={styles.reportTitle}>{report.title}</Text>
-                <Text style={styles.reportDate}>{report.date}</Text>
-              </View>
-              <MaterialCommunityIcons name="download" size={20} color="#3d46b4" />
+          {/* Title */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Title *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Brief title of your issue"
+              placeholderTextColor="#999"
+              value={title}
+              onChangeText={setTitle}
+            />
+          </View>
+
+          {/* Description */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Description *</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Describe your issue in detail"
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              value={description}
+              onChangeText={setDescription}
+            />
+          </View>
+
+          {/* Photo Upload */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Upload Photo (Optional)</Text>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handleImagePick}
+            >
+              <MaterialCommunityIcons name="camera" size={32} color="#252d6e" />
+              <Text style={styles.uploadText}>
+                {image ? 'Photo Selected' : 'Take or Upload Photo'}
+              </Text>
             </TouchableOpacity>
-          ))}
+          </View>
+
+          {/* Location */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Location</Text>
+            <View style={styles.locationContainer}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Enter postcode"
+                placeholderTextColor="#999"
+                value={postcode}
+                onChangeText={setPostcode}
+              />
+              <TouchableOpacity
+                style={styles.mapButton}
+                onPress={handleLocationPick}
+              >
+                <MaterialCommunityIcons name="map-marker" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* My Reports Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Reports</Text>
+            
+            <TouchableOpacity style={styles.reportCard}>
+              <View style={styles.reportHeader}>
+                <Text style={styles.reportTitle}>Water Pipe Leakage</Text>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>In Progress</Text>
+                </View>
+              </View>
+              <Text style={styles.reportDate}>Submitted on: 28 Dec 2024</Text>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: '60%' }]} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.reportCard}>
+              <View style={styles.reportHeader}>
+                <Text style={styles.reportTitle}>Street Light Not Working</Text>
+                <View style={[styles.statusBadge, styles.statusResolved]}>
+                  <Text style={styles.statusText}>Resolved</Text>
+                </View>
+              </View>
+              <Text style={styles.reportDate}>Submitted on: 15 Dec 2024</Text>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: '100%', backgroundColor: '#4CAF50' }]} />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitButtonText}>Submit Report</Text>
+            <MaterialCommunityIcons name="send" size={20} color="#fff" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <StatusBar style="light" />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1f4e',
+    backgroundColor: '#f5f5f5',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    backgroundColor: '#1a2456',
+    paddingHorizontal: 16,
     paddingVertical: 16,
-    marginTop: 8,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#252d6e',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
     color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+  content: {
+    padding: 20,
   },
-  card: {
-    backgroundColor: '#252d6e',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
+  section: {
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
   },
-  cardTitle: {
+  sectionTitle: {
     fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1a2456',
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
-    marginTop: 12,
+    color: '#1a2456',
+    marginBottom: 8,
   },
-  cardText: {
-    fontSize: 13,
-    color: '#b0b3d9',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  reportList: {
-    gap: 12,
-  },
-  reportItem: {
+  categoryContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#252d6e',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    justifyContent: 'space-between',
+    gap: 10,
   },
-  reportIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: '#3d46b4',
+  categoryButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  categoryButtonActive: {
+    backgroundColor: '#252d6e',
+    borderColor: '#252d6e',
+  },
+  categoryLabel: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#252d6e',
+  },
+  categoryLabelActive: {
+    color: '#fff',
+  },
+  input: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 16,
+    color: '#1a2456',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  textArea: {
+    height: 120,
+    paddingTop: 16,
+  },
+  uploadButton: {
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+  },
+  uploadText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#252d6e',
+    fontWeight: '600',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  mapButton: {
+    backgroundColor: '#252d6e',
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
   },
-  reportDetails: {
-    flex: 1,
+  reportCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   reportTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
+    color: '#1a2456',
+    flex: 1,
+  },
+  statusBadge: {
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusResolved: {
+    backgroundColor: '#4CAF50',
+  },
+  statusText: {
     color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   reportDate: {
-    fontSize: 12,
-    color: '#b0b3d9',
-    marginTop: 4,
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF9800',
+  },
+  submitButton: {
+    backgroundColor: '#FFD700',
+    padding: 18,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  submitButtonText: {
+    color: '#1a2456',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
