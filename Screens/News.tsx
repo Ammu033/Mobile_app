@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { shareEvent } from '../Api/shareUtils';
 
 interface Event {
   id: string;
@@ -160,11 +161,11 @@ export default function News({ navigation }: any) {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {displayData.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.card}>
-              {/* Event Image */}
-              {item.image && (
-                <Image source={item.image} style={styles.eventImage} />
-              )}
+            <TouchableOpacity 
+              key={item.id} 
+              style={styles.card}
+              onPress={() => navigation.navigate('EventDetail', { event: item })}  // ADD THIS
+            >
 
               {/* Card Content */}
               <View style={styles.cardContent}>
@@ -236,14 +237,19 @@ export default function News({ navigation }: any) {
                       <Text style={styles.actionButtonText}>Add to Calendar</Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity style={styles.actionButton}>
-                    <MaterialCommunityIcons
-                      name="share-variant"
-                      size={18}
-                      color="#252d6e"
-                    />
-                    <Text style={styles.actionButtonText}>Share</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.actionButton}
+                    onPress={() => shareEvent(
+                      item.title,
+                      item.date,
+                      item.time,
+                      item.location,
+                      item.description
+                    )}
+                  >
+  <MaterialCommunityIcons name="share-variant" size={18} color="#252d6e" />
+  <Text style={styles.actionButtonText}>Share</Text>
+</TouchableOpacity>
                 </View>
               </View>
             </TouchableOpacity>
@@ -265,14 +271,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#1a2456',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    header: {
+      backgroundColor: '#1a2456',
+      paddingTop: 48,  // Add this line
+      paddingHorizontal: 20,
+      paddingBottom: 15,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
   headerTitle: {
     color: '#fff',
     fontSize: 20,

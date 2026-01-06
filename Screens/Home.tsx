@@ -1,4 +1,8 @@
 import React from 'react';
+import { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+
+import { getActivities, Activity } from '../Api/activitymanger';
 import { 
   StyleSheet, 
   Text, 
@@ -13,20 +17,37 @@ import ImageSlider from '../Components/slider';
 import Button from '../Components/Button';
 
 export default function Home({ navigation }: any) {
+    const [activities, setActivities] = useState<Activity[]>([]);
+
+  // Load activities when screen comes into focus
+    useFocusEffect(
+    React.useCallback(() => {
+      loadActivities();
+    }, [])
+  );
+
+  const loadActivities = async () => {
+    const recentActivities = await getActivities(5); // Get last 5 activities
+    setActivities(recentActivities);
+  };
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a2456" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Welcome Back</Text>
-          <Text style={styles.userName}>Amanpreet Singh</Text>
-        </View>
-        <TouchableOpacity style={styles.profileButton}>
+        <StatusBar barStyle="light-content" backgroundColor="#1a2456" />
+        
+        {/* Add paddingTop to header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>Welcome back</Text>
+            <Text style={styles.userName}>Amanpreet Singh</Text>
+          </View>
+        <TouchableOpacity 
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('Profile')}  // ADD THIS
+        >
           <MaterialCommunityIcons name="account-circle" size={40} color="#fff" />
         </TouchableOpacity>
-      </View>
+        </View>
+
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
@@ -79,37 +100,40 @@ export default function Home({ navigation }: any) {
           </View>
         </View>
 
-        {/* Recent Activity */}
-        <View style={styles.recentActivity}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          
-          <View style={styles.activityCard}>
-            <View style={styles.activityIconContainer}>
-              <MaterialCommunityIcons name="check-circle" size={24} color="#4CAF50" />
-            </View>
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>Pension Application</Text>
-              <Text style={styles.activityStatus}>Approved • 2 days ago</Text>
-            </View>
+       {/* Recent Activity Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AllActivities')}>
+              <Text style={styles.viewAll}>View All</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.activityCard}>
-            <View style={styles.activityIconContainer}>
-              <MaterialCommunityIcons name="clock-outline" size={24} color="#FF9800" />
+          {activities.length === 0 ? (
+            <View style={styles.emptyActivity}>
+              <MaterialCommunityIcons name="history" size={40} color="#ccc" />
+              <Text style={styles.emptyText}>No recent activity</Text>
             </View>
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>Water Pipe Complaint</Text>
-              <Text style={styles.activityStatus}>In Progress • 1 week ago</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Footer Info */}
-        <View style={styles.footer}>
-          <MaterialCommunityIcons name="information" size={20} color="#666" />
-          <Text style={styles.footerText}>
-            Need help? Contact Panchayat Office
-          </Text>
+          ) : (
+            activities.map((activity) => (
+              <View key={activity.id} style={styles.activityCard}>
+                <View style={[styles.activityIcon, { backgroundColor: activity.color }]}>
+                  <MaterialCommunityIcons 
+                    name={activity.icon as any} 
+                    size={24} 
+                    color="#fff" 
+                  />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>{activity.title}</Text>
+                  <Text style={styles.activityDescription} numberOfLines={2}>
+                    {activity.description}
+                  </Text>
+                  <Text style={styles.activityDate}>{activity.date}</Text>
+                </View>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -121,19 +145,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#1a2456',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
+ header: {
+  backgroundColor: '#1a2456',
+  paddingTop: 48,  // Add this - pushes header down from status bar
+  paddingBottom: 20,
+  paddingHorizontal: 20,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+ },
   greeting: {
     color: '#fff',
     fontSize: 14,
@@ -153,12 +173,14 @@ const styles = StyleSheet.create({
   },
   sliderContainer: {
     padding: 20,
+    
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1a2456',
     marginBottom: 12,
+    paddingTop: 10
   },
   quickActions: {
     padding: 20,
@@ -222,5 +244,49 @@ const styles = StyleSheet.create({
   footerText: {
     color: '#666',
     fontSize: 14,
+  },
+  section: {
+    padding: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  
+  activityIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+ 
+  activityDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  activityDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  emptyActivity: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 10,
+  },
+  viewAll: {
+    fontSize: 14,
+    color: '#252d6e',
+    fontWeight: '600',
   },
 });

@@ -8,6 +8,8 @@ import Form from './Screens/Form';
 import Report from './Screens/Report';
 import News from './Screens/News';
 import Calendar from './Screens/calender';
+import Profile from './Screens/Profile';
+import EventDetail from './Screens/EventDetail';
 
 const Stack = createStackNavigator();
 
@@ -20,6 +22,8 @@ export default function App() {
         <Stack.Screen name="Report" component={Report} />
         <Stack.Screen name="Form" component={Form} />
         <Stack.Screen name="News" component={News} />
+        <Stack.Screen name="Profile" component={Profile} />
+        <Stack.Screen name="EventDetail" component={EventDetail} />  
       </Stack.Navigator>
       <StatusBar style="light" />
     </NavigationContainer>

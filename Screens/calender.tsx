@@ -11,6 +11,8 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { bookAppointment } from '../Api/appointmentService';
+import { shareAppointmentToWhatsApp, sendAppointmentEmail } from '../Api/shareUtils';
 
 interface StaffMember {
   id: string;
@@ -78,19 +80,66 @@ export default function Calendar({ navigation }: any) {
     '05:00 PM',
   ];
 
-  const handleBooking = () => {
-    if (!selectedStaff || !selectedDate || !selectedTime || !reason) {
-      Alert.alert('Error', 'Please fill all required fields');
-      return;
-    }
+  const handleBooking = async () => {
+  if (!selectedStaff || !selectedDate || !selectedTime || !reason) {
+    Alert.alert('Error', 'Please fill all required fields');
+    return;
+  }
 
-    const staff = staffMembers.find(s => s.id === selectedStaff);
+  const staff = staffMembers.find(s => s.id === selectedStaff);
+
+  try {
+    // Save to Firestore
+    await bookAppointment({
+      userId: 'USER_123',
+      userName: 'Amanpreet Singh', // TODO: Get from profile
+      userPhone: '+91XXXXXXXXXX',
+      userEmail: 'user@email.com',
+      staffId: selectedStaff,
+      staffName: staff?.name || '',
+      staffPhone: staff?.phone || '',
+      date: selectedDate,
+      time: selectedTime,
+      reason,
+      status: 'Pending',
+    });
+
+    // Send to user via WhatsApp
+    await shareAppointmentToWhatsApp(
+      staff?.name || '',
+      selectedDate,
+      selectedTime,
+      reason
+    );
+
+    // Send to council member
+    await shareAppointmentToWhatsApp(
+      `Appointment Request from Amanpreet Singh`,
+      selectedDate,
+      selectedTime,
+      reason,
+      staff?.phone
+    );
+
+    // Send email confirmation
+    await sendAppointmentEmail(
+      'user@email.com',
+      staff?.name || '',
+      selectedDate,
+      selectedTime,
+      reason
+    );
+
     Alert.alert(
-      'Booking Confirmed',
-      `Your appointment with ${staff?.name} on ${selectedDate} at ${selectedTime} has been confirmed.`,
+      'Success',
+      'Appointment booked! Confirmation sent via WhatsApp and email.',
       [{ text: 'OK', onPress: () => navigation.goBack() }]
     );
-  };
+
+  } catch (error) {
+    Alert.alert('Error', 'Failed to book appointment');
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -311,13 +360,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#1a2456',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  backgroundColor: '#1a2456',
+  paddingHorizontal: 16,
+  paddingTop: 48,
+  paddingBottom: 16,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+},
   headerTitle: {
     color: '#fff',
     fontSize: 20,

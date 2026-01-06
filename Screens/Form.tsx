@@ -11,6 +11,8 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { pickDocument, uploadDocumentToFirebase } from '../Api/mediaPicker';
+import { submitApplication } from '../Api/applicationService';
 
 interface Service {
   id: string;
@@ -29,6 +31,20 @@ export default function Form({ navigation }: any) {
     pincode: '',
     email: '',
   });
+  const [documents, setDocuments] = useState<string[]>([]);
+  const [uploadedDocs, setUploadedDocs] = useState<{name: string, url: string}[]>([]);
+
+  const handleDocumentUpload = async () => {
+  const doc = await pickDocument();
+  if (doc) {
+    Alert.alert('Uploading...', 'Please wait');
+    const url = await uploadDocumentToFirebase(doc.uri, doc.name, 'applications');
+    if (url) {
+      setUploadedDocs([...uploadedDocs, { name: doc.name, url }]);
+      Alert.alert('Success', 'Document uploaded!');
+    }
+  }
+};
 
   const services: Service[] = [
     {
@@ -85,20 +101,41 @@ export default function Form({ navigation }: any) {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = () => {
-    const { fullName, aadhar, phone, address, pincode } = formData;
-    
-    if (!fullName || !aadhar || !phone || !address || !pincode) {
-      Alert.alert('Error', 'Please fill all required fields');
-      return;
-    }
+  const handleSubmit = async () => {
+  const { fullName, aadhar, phone, address, pincode } = formData;
+  
+  // Add this check at the top
+  if (!selectedService) {
+    Alert.alert('Error', 'Please select a service');
+    return;
+  }
+  
+  if (!fullName || !aadhar || !phone || !address || !pincode) {
+    Alert.alert('Error', 'Please fill all required fields');
+    return;
+  }
 
-    Alert.alert(
-      'Success',
-      `Your application for ${selectedService?.name} has been submitted successfully!`,
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
-  };
+  try {
+    await submitApplication({
+      userId: 'USER_123',
+      serviceName: selectedService.name,  // ✅ Now safe!
+      serviceCategory: selectedService.category,  // ✅ Now safe!
+      fullName,
+      aadhar,
+      phone,
+      email: formData.email,
+      address,
+      pincode,
+      documents: uploadedDocs.map(d => d.url),
+      status: 'Submitted',
+    });
+
+    Alert.alert('Success', 'Application submitted successfully!');
+    navigation.goBack();
+  } catch (error) {
+    Alert.alert('Error', 'Failed to submit application');
+  }
+};
 
   if (!selectedService) {
     return (
@@ -286,14 +323,28 @@ export default function Form({ navigation }: any) {
             </View>
 
             {/* Document Upload */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Supporting Documents</Text>
-              <TouchableOpacity style={styles.uploadButton}>
-                <MaterialCommunityIcons name="paperclip" size={24} color="#252d6e" />
-                <Text style={styles.uploadText}>Attach Documents</Text>
-              </TouchableOpacity>
+            <TouchableOpacity style={styles.uploadButton}  onPress={handleDocumentUpload} >
+                  <MaterialCommunityIcons name="paperclip" size={24} color="#252d6e" />
+                  <Text style={styles.uploadText}>Attach Documents</Text>
+            </TouchableOpacity>
+            {uploadedDocs.length > 0 && (
+            <View style={styles.uploadedList}>
+                  {uploadedDocs.map((doc, index) => (
+                    <View key={index} style={styles.uploadedItem}>
+                      <MaterialCommunityIcons name="file-document" size={20} color="#4CAF50" />
+                      <Text style={styles.uploadedName} numberOfLines={1}>
+                        {doc.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setUploadedDocs(uploadedDocs.filter((_, i) => i !== index))}
+                      >
+                        <MaterialCommunityIcons name="close-circle" size={20} color="#F44336" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
-
             {/* Terms */}
             <View style={styles.termsContainer}>
               <MaterialCommunityIcons name="information" size={20} color="#666" />
@@ -308,7 +359,6 @@ export default function Form({ navigation }: any) {
               <MaterialCommunityIcons name="send" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -320,13 +370,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#1a2456',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  backgroundColor: '#1a2456',
+  paddingHorizontal: 16,
+  paddingTop: 48,
+  paddingBottom: 16,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+},
   headerTitle: {
     color: '#fff',
     fontSize: 20,
@@ -551,4 +602,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  uploadedList: {
+  marginTop: 12,
+  gap: 8,
+},
+uploadedItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#E8F5E9',
+  padding: 12,
+  borderRadius: 8,
+  gap: 8,
+},
+uploadedName: {
+  flex: 1,
+  fontSize: 14,
+  color: '#1a2456',
+},
 });
