@@ -10,20 +10,31 @@ import News from './Screens/News';
 import Calendar from './Screens/calender';
 import Profile from './Screens/Profile';
 import EventDetail from './Screens/EventDetail';
+import Login from './Screens/Login';
+import OTPVerify from './Api/OtpVerify';
+import ProfileSetup from './Api/Profilesetup';
+import Verification from './Screens/Verification';
 
 const Stack = createStackNavigator();
 
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator 
+        initialRouteName="Login"
+        screenOptions={{ headerShown: false }}
+      >
+        <Stack.Screen name="Login" component={Login} />
+        <Stack.Screen name="OTPVerify" component={OTPVerify} />  
+        <Stack.Screen name="Verification" component={Verification} />
+        <Stack.Screen name="ProfileSetup" component={ProfileSetup} />
         <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen name="Profile" component={Profile} />
         <Stack.Screen name="Calendar" component={Calendar} />
         <Stack.Screen name="Report" component={Report} />
         <Stack.Screen name="Form" component={Form} />
         <Stack.Screen name="News" component={News} />
-        <Stack.Screen name="Profile" component={Profile} />
-        <Stack.Screen name="EventDetail" component={EventDetail} />  
+        <Stack.Screen name="EventDetail" component={EventDetail} />
       </Stack.Navigator>
       <StatusBar style="light" />
     </NavigationContainer>

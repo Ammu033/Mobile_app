@@ -1,151 +1,125 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCurrentUser } from './userService';
 
 export interface Activity {
   id: string;
-  type: 'report' | 'complaint' | 'service' | 'payment' | 'document';
+  userId: string;
+  type: 'report' | 'application' | 'appointment' | 'event';
   title: string;
   description: string;
-  timestamp: number;
-  date: string;
+  status: string;
+  timestamp: string;
   icon: string;
   color: string;
-  status?: string;
-  metadata?: any; // Additional data specific to each activity type
+  metadata?: any; // Store additional data
 }
 
-const ACTIVITIES_KEY = '@activities';
+const ACTIVITY_KEY = 'userActivities';
 
-// Add a new activity
+// Add activity
 export const addActivity = async (
   type: Activity['type'],
   title: string,
   description: string,
+  status: string,
   metadata?: any
-): Promise<boolean> => {
+): Promise<void> => {
   try {
+    const user = await getCurrentUser();
+    if (!user) return;
+
+    const activities = await getAllActivities();
+
+    const iconMap = {
+      report: 'alert-circle',
+      application: 'file-document',
+      appointment: 'calendar-clock',
+      event: 'calendar-star',
+    };
+
+    const colorMap = {
+      report: '#FF9800',
+      application: '#2196F3',
+      appointment: '#4CAF50',
+      event: '#9C27B0',
+    };
+
     const newActivity: Activity = {
-      id: `${type}_${Date.now()}`,
+      id: `activity_${Date.now()}`,
+      userId: user.id,
       type,
       title,
       description,
-      timestamp: Date.now(),
-      date: new Date().toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }),
-      icon: getIconForType(type),
-      color: getColorForType(type),
+      status,
+      timestamp: new Date().toISOString(),
+      icon: iconMap[type],
+      color: colorMap[type],
       metadata,
     };
 
-    // Get existing activities
-    const existing = await AsyncStorage.getItem(ACTIVITIES_KEY);
-    const activities: Activity[] = existing ? JSON.parse(existing) : [];
-
-    // Add new activity at the beginning
-    activities.unshift(newActivity);
-
-    // Keep only last 50 activities to avoid storage issues
-    const limitedActivities = activities.slice(0, 50);
-
-    // Save back to storage
-    await AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(limitedActivities));
-
-    return true;
+    activities.unshift(newActivity); // Add to beginning
+    
+    // Keep only last 50 activities
+    const trimmed = activities.slice(0, 50);
+    
+    await AsyncStorage.setItem(ACTIVITY_KEY, JSON.stringify(trimmed));
   } catch (error) {
-    console.error('Error adding activity:', error);
-    return false;
+    console.error('Add activity error:', error);
   }
 };
 
-// Get all activities
-export const getActivities = async (limit?: number): Promise<Activity[]> => {
+// Get all activities for current user
+export const getAllActivities = async (): Promise<Activity[]> => {
   try {
-    const existing = await AsyncStorage.getItem(ACTIVITIES_KEY);
-    const activities: Activity[] = existing ? JSON.parse(existing) : [];
+    const user = await getCurrentUser();
+    if (!user) return [];
 
-    // Return limited number if specified
-    return limit ? activities.slice(0, limit) : activities;
+    const data = await AsyncStorage.getItem(ACTIVITY_KEY);
+    const allActivities: Activity[] = data ? JSON.parse(data) : [];
+
+    // Filter by current user
+    return allActivities.filter(activity => activity.userId === user.id);
   } catch (error) {
-    console.error('Error getting activities:', error);
     return [];
   }
 };
 
-// Get activities by type
-export const getActivitiesByType = async (
-  type: Activity['type'],
-  limit?: number
-): Promise<Activity[]> => {
+// Get recent activities (last 5)
+export const getRecentActivities = async (): Promise<Activity[]> => {
   try {
-    const allActivities = await getActivities();
-    const filtered = allActivities.filter((activity) => activity.type === type);
-    return limit ? filtered.slice(0, limit) : filtered;
+    const activities = await getAllActivities();
+    return activities.slice(0, 5);
   } catch (error) {
-    console.error('Error getting activities by type:', error);
     return [];
+  }
+};
+
+// Update activity status
+export const updateActivityStatus = async (
+  activityId: string,
+  newStatus: string
+): Promise<void> => {
+  try {
+    const data = await AsyncStorage.getItem(ACTIVITY_KEY);
+    if (!data) return;
+
+    const activities: Activity[] = JSON.parse(data);
+    const index = activities.findIndex(a => a.id === activityId);
+
+    if (index !== -1) {
+      activities[index].status = newStatus;
+      await AsyncStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
+    }
+  } catch (error) {
+    console.error('Update activity error:', error);
   }
 };
 
 // Clear all activities
-export const clearActivities = async (): Promise<boolean> => {
+export const clearAllActivities = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(ACTIVITIES_KEY);
-    return true;
+    await AsyncStorage.removeItem(ACTIVITY_KEY);
   } catch (error) {
-    console.error('Error clearing activities:', error);
-    return false;
+    console.error('Clear activities error:', error);
   }
 };
-
-// Delete specific activity
-export const deleteActivity = async (activityId: string): Promise<boolean> => {
-  try {
-    const existing = await AsyncStorage.getItem(ACTIVITIES_KEY);
-    const activities: Activity[] = existing ? JSON.parse(existing) : [];
-
-    const filtered = activities.filter((activity) => activity.id !== activityId);
-
-    await AsyncStorage.setItem(ACTIVITIES_KEY, JSON.stringify(filtered));
-    return true;
-  } catch (error) {
-    console.error('Error deleting activity:', error);
-    return false;
-  }
-};
-
-// Helper functions
-function getIconForType(type: Activity['type']): string {
-  switch (type) {
-    case 'report':
-      return 'file-document';
-    case 'complaint':
-      return 'alert-circle';
-    case 'service':
-      return 'hand-heart';
-    case 'payment':
-      return 'cash';
-    case 'document':
-      return 'file-pdf-box';
-    default:
-      return 'information';
-  }
-}
-
-function getColorForType(type: Activity['type']): string {
-  switch (type) {
-    case 'report':
-      return '#2196F3';
-    case 'complaint':
-      return '#FF9800';
-    case 'service':
-      return '#4CAF50';
-    case 'payment':
-      return '#9C27B0';
-    case 'document':
-      return '#F44336';
-    default:
-      return '#757575';
-  }
-}

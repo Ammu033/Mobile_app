@@ -1,8 +1,11 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-
+import { 
+  initializeAuth, 
+  getReactNativePersistence 
+} from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // TODO: Replace with your Firebase config
 // Get this from Firebase Console → Project Settings → General → Your apps → Web app
 const firebaseConfig = {
@@ -21,14 +24,20 @@ let auth;
 let db;
 let storage;
 
-try {
+if (!getApps().length) {
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
+  
+  // Initialize Auth with React Native persistence
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+  
   db = getFirestore(app);
   storage = getStorage(app);
-  console.log('✅ Firebase initialized successfully');
-} catch (error) {
-  console.error('❌ Firebase initialization error:', error);
+  
+  console.log('✅ Firebase initialized for Expo Go');
+} else {
+  app = getApps()[0];
 }
 
 export { auth, db, storage };

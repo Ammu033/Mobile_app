@@ -1,18 +1,4 @@
-import { db } from '../firebaseConfig';
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  getDoc,
-  onSnapshot,
-  Timestamp,
-} from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Report {
   id?: string;
@@ -28,15 +14,39 @@ export interface Report {
   updatedAt: Date;
 }
 
+const STORAGE_KEY = 'reports';
+
+// Get all reports from storage
+const getAllReports = async (): Promise<Report[]> => {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!data) return [];
+    const reports = JSON.parse(data);
+    return reports.map((r: any) => ({
+      ...r,
+      createdAt: new Date(r.createdAt),
+      updatedAt: new Date(r.updatedAt),
+    }));
+  } catch (error) {
+    console.error('Error loading reports:', error);
+    return [];
+  }
+};
+
 // Add new report
 export const addReport = async (report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
-    const docRef = await addDoc(collection(db, 'reports'), {
+    const reports = await getAllReports();
+    const newReport: Report = {
       ...report,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    return docRef.id;
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    reports.unshift(newReport); // Add to beginning
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+    console.log('✅ Report saved locally');
+    return newReport.id;
   } catch (error) {
     console.error('Error adding report:', error);
     throw error;
@@ -45,72 +55,34 @@ export const addReport = async (report: Omit<Report, 'id' | 'createdAt' | 'updat
 
 // Get user's reports
 export const getUserReports = async (userId: string): Promise<Report[]> => {
-  try {
-    const q = query(
-      collection(db, 'reports'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const reports: Report[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      reports.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Report);
-    });
-    
-    return reports;
-  } catch (error) {
-    console.error('Error getting reports:', error);
-    throw error;
-  }
+  const all = await getAllReports();
+  return all.filter((r) => r.userId === userId);
 };
 
-// Listen to report updates in real-time
+// Subscribe to reports (mock real-time)
 export const subscribeToReports = (
   userId: string,
   callback: (reports: Report[]) => void
 ) => {
-  const q = query(
-    collection(db, 'reports'),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
-  );
-
-  return onSnapshot(q, (snapshot) => {
-    const reports: Report[] = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      reports.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Report);
-    });
-    callback(reports);
-  });
+  getUserReports(userId).then(callback);
+  return () => {};
 };
 
-// Update report status (for admin)
+// Update report status
 export const updateReportStatus = async (
   reportId: string,
   status: 'Pending' | 'In Progress' | 'Resolved',
   progress: number
 ) => {
   try {
-    const reportRef = doc(db, 'reports', reportId);
-    await updateDoc(reportRef, {
-      status,
-      progress,
-      updatedAt: Timestamp.now(),
-    });
+    const reports = await getAllReports();
+    const index = reports.findIndex((r) => r.id === reportId);
+    if (index !== -1) {
+      reports[index].status = status;
+      reports[index].progress = progress;
+      reports[index].updatedAt = new Date();
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+    }
   } catch (error) {
     console.error('Error updating report:', error);
     throw error;
@@ -118,11 +90,22 @@ export const updateReportStatus = async (
 };
 
 // Delete report
+
 export const deleteReport = async (reportId: string) => {
   try {
-    await deleteDoc(doc(db, 'reports', reportId));
+    console.log('🗑️ Deleting report:', reportId);
+    
+    const reports = await getAllReports();
+    const filtered = reports.filter((r) => r.id !== reportId);
+    
+    console.log(`📊 Reports before: ${reports.length}, after: ${filtered.length}`);
+    
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    console.log('✅ Report deleted successfully');
+    
+    return true;
   } catch (error) {
-    console.error('Error deleting report:', error);
+    console.error('❌ Error deleting report:', error);
     throw error;
   }
 };

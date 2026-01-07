@@ -1,16 +1,4 @@
-import { db } from '../firebaseConfig';
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  doc,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  onSnapshot,
-  Timestamp,
-} from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Appointment {
   id?: string;
@@ -30,105 +18,86 @@ export interface Appointment {
   reminderSent?: boolean;
 }
 
-// Book new appointment
+const STORAGE_KEY = 'appointments';
+
+const getAllAppointments = async (): Promise<Appointment[]> => {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!data) return [];
+    const apps = JSON.parse(data);
+    return apps.map((a: any) => ({
+      ...a,
+      createdAt: new Date(a.createdAt),
+      updatedAt: new Date(a.updatedAt),
+    }));
+  } catch (error) {
+    return [];
+  }
+};
+
 export const bookAppointment = async (
   appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt' | 'reminderSent'>
 ) => {
   try {
-    const docRef = await addDoc(collection(db, 'appointments'), {
+    const appointments = await getAllAppointments();
+    const newApp: Appointment = {
       ...appointment,
+      id: Date.now().toString(),
       status: 'Pending',
       reminderSent: false,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    return docRef.id;
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    appointments.unshift(newApp);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
+    console.log('✅ Appointment saved locally');
+    return newApp.id;
   } catch (error) {
     console.error('Error booking appointment:', error);
     throw error;
   }
 };
 
-// Get user's appointments
 export const getUserAppointments = async (userId: string): Promise<Appointment[]> => {
-  try {
-    const q = query(
-      collection(db, 'appointments'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const appointments: Appointment[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      appointments.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Appointment);
-    });
-    
-    return appointments;
-  } catch (error) {
-    console.error('Error getting appointments:', error);
-    throw error;
-  }
+  const all = await getAllAppointments();
+  return all.filter((a) => a.userId === userId);
 };
 
-// Subscribe to appointment updates
 export const subscribeToAppointments = (
   userId: string,
   callback: (appointments: Appointment[]) => void
 ) => {
-  const q = query(
-    collection(db, 'appointments'),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
-  );
-
-  return onSnapshot(q, (snapshot) => {
-    const appointments: Appointment[] = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      appointments.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Appointment);
-    });
-    callback(appointments);
-  });
+  getUserAppointments(userId).then(callback);
+  return () => {};
 };
 
-// Update appointment status
 export const updateAppointmentStatus = async (
   appointmentId: string,
   status: 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed'
 ) => {
   try {
-    const appRef = doc(db, 'appointments', appointmentId);
-    await updateDoc(appRef, {
-      status,
-      updatedAt: Timestamp.now(),
-    });
+    const appointments = await getAllAppointments();
+    const index = appointments.findIndex((a) => a.id === appointmentId);
+    if (index !== -1) {
+      appointments[index].status = status;
+      appointments[index].updatedAt = new Date();
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
+    }
   } catch (error) {
     console.error('Error updating appointment:', error);
     throw error;
   }
 };
 
-// Mark reminder as sent
 export const markReminderSent = async (appointmentId: string) => {
   try {
-    const appRef = doc(db, 'appointments', appointmentId);
-    await updateDoc(appRef, {
-      reminderSent: true,
-      updatedAt: Timestamp.now(),
-    });
+    const appointments = await getAllAppointments();
+    const index = appointments.findIndex((a) => a.id === appointmentId);
+    if (index !== -1) {
+      appointments[index].reminderSent = true;
+      appointments[index].updatedAt = new Date();
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
+    }
   } catch (error) {
     console.error('Error marking reminder:', error);
     throw error;

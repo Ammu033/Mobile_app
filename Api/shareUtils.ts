@@ -1,34 +1,41 @@
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
-import { Linking, Alert } from 'react-native';
+import { Linking, Alert, Share } from 'react-native';
 
-// Share via WhatsApp
+// Share to WhatsApp (opens contact picker if no phone number)
 export const shareToWhatsApp = async (message: string, phoneNumber?: string) => {
   try {
-    let url = `whatsapp://send?text=${encodeURIComponent(message)}`;
-    
     if (phoneNumber) {
-      // Format: Remove spaces, dashes, etc.
+      // Send to specific number
       const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
-      url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
-    }
-
-    const canOpen = await Linking.canOpenURL(url);
-    
-    if (canOpen) {
-      await Linking.openURL(url);
-      return true;
+      const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+      
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+        return true;
+      }
     } else {
-      Alert.alert(
-        'WhatsApp Not Found',
-        'WhatsApp is not installed on this device.'
-      );
+      // Open WhatsApp to choose contact
+      const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
+      
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+        return true;
+      }
+    }
+    
+    // Fallback to native share
+    await Share.share({ message });
+    return true;
+  } catch (error) {
+    console.error('Share error:', error);
+    try {
+      await Share.share({ message });
+      return true;
+    } catch (e) {
+      Alert.alert('Error', 'Failed to share');
       return false;
     }
-  } catch (error) {
-    console.error('Error sharing to WhatsApp:', error);
-    Alert.alert('Error', 'Failed to share via WhatsApp.');
-    return false;
   }
 };
 
@@ -51,7 +58,7 @@ export const shareReportToWhatsApp = (
 ${description}
 
 ---
-Submitted via EasyAccess App
+_Submitted via EasyAccess App_
   `.trim();
 
   return shareToWhatsApp(message, councilPhone);
@@ -66,9 +73,9 @@ export const shareAppointmentToWhatsApp = (
   staffPhone?: string
 ) => {
   const message = `
-📅 *Appointment Booked*
+📅 *Appointment Confirmed*
 
-👤 *With:* ${staffName}
+👨‍💼 *With:* ${staffName}
 📆 *Date:* ${date}
 🕐 *Time:* ${time}
 
@@ -76,7 +83,7 @@ export const shareAppointmentToWhatsApp = (
 ${reason}
 
 ---
-Booked via EasyAccess App
+_Booked via EasyAccess App_
   `.trim();
 
   return shareToWhatsApp(message, staffPhone);
@@ -100,23 +107,27 @@ export const shareEvent = async (
 ${description}
 
 ---
-Shared from EasyAccess App
+_Shared from EasyAccess App_
   `.trim();
 
+  return shareToWhatsApp(message);
+};
+
+// Generic share function (uses native share sheet)
+export const shareGeneric = async (message: string, title?: string) => {
   try {
-    if (await Sharing.isAvailableAsync()) {
-      // For sharing with any app
-      await Sharing.shareAsync('data:text/plain;base64,' + btoa(message));
-    } else {
-      // Fallback to WhatsApp
-      await shareToWhatsApp(message);
-    }
+    await Share.share({
+      message,
+      title: title || 'Share',
+    });
+    return true;
   } catch (error) {
-    console.error('Error sharing event:', error);
+    console.error('Share error:', error);
+    return false;
   }
 };
 
-// Send email
+// Send email (opens email app)
 export const sendEmail = async (
   to: string,
   subject: string,
@@ -134,36 +145,8 @@ export const sendEmail = async (
       return false;
     }
   } catch (error) {
-    console.error('Error opening email:', error);
+    console.error('Email error:', error);
     Alert.alert('Error', 'Failed to open email app.');
     return false;
   }
-};
-
-// Send appointment confirmation email
-export const sendAppointmentEmail = (
-  userEmail: string,
-  staffName: string,
-  date: string,
-  time: string,
-  reason: string
-) => {
-  const subject = `Appointment Confirmation - ${staffName}`;
-  const body = `
-Dear User,
-
-Your appointment has been confirmed with the following details:
-
-Council Member: ${staffName}
-Date: ${date}
-Time: ${time}
-Reason: ${reason}
-
-Please arrive 5 minutes before your scheduled time.
-
-Thank you,
-Panchayat Office
-  `.trim();
-
-  return sendEmail(userEmail, subject, body);
 };

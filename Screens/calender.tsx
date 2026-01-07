@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,  useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,9 +10,11 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { bookAppointment } from '../Api/appointmentService';
-import { shareAppointmentToWhatsApp, sendAppointmentEmail } from '../Api/shareUtils';
+import { shareAppointmentToWhatsApp } from '../Api/shareUtils';
+import { sendAppointmentEmail } from '../Api/emailService';
 
 interface StaffMember {
   id: string;
@@ -27,8 +29,82 @@ export default function Calendar({ navigation }: any) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const [dates, setDates] = useState<any[]>([]);
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
 
-  const staffMembers: StaffMember[] = [
+  // Generate next 14 days dynamically
+  const generateDates = () => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const dateArray = [];
+    const today = new Date();
+    
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      dateArray.push({
+        day: date.getDate().toString(),
+        label: days[date.getDay()],
+        month: months[date.getMonth()],
+        fullDate: date.toISOString().split('T')[0], // YYYY-MM-DD format
+        isPast: false,
+      });
+    }
+    
+    return dateArray;
+  };
+
+  // Generate time slots (9 AM - 5 PM, excluding lunch 12-2 PM)
+  const generateTimeSlots = () => {
+    const slots = [];
+    
+    // Morning slots (9 AM - 12 PM)
+    for (let hour = 9; hour <= 11; hour++) {
+      slots.push(`${hour.toString().padStart(2, '0')}:00 AM`);
+    }
+    
+    slots.push('12:00 PM');
+    
+    // Afternoon slots (2 PM - 5 PM)
+    for (let hour = 2; hour <= 5; hour++) {
+      slots.push(`${hour.toString().padStart(2, '0')}:00 PM`);
+    }
+    
+    return slots;
+  };
+
+  // Check if time slot is available (not in the past)
+  const isTimeSlotAvailable = (date: string, time: string) => {
+    if (!date) return true;
+    
+    const now = new Date();
+    const selectedDateTime = new Date(date);
+    
+    // Parse time
+    const [timeStr, period] = time.split(' ');
+    let [hours, minutes] = timeStr.split(':').map(Number);
+    
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    selectedDateTime.setHours(hours, minutes, 0, 0);
+    
+    // Return true if the selected time is in the future
+    return selectedDateTime > now;
+  };
+
+  useEffect(() => {
+    // Generate dates and time slots on mount
+    setDates(generateDates());
+    setTimeSlots(generateTimeSlots());
+  }, []);
+
+  const staffMembers = [
     {
       id: '1',
       name: 'Harpreet Singh',
@@ -59,27 +135,6 @@ export default function Calendar({ navigation }: any) {
     },
   ];
 
-  const dates = [
-    { day: '5', label: 'Mon', month: 'Jan' },
-    { day: '6', label: 'Tue', month: 'Jan' },
-    { day: '7', label: 'Wed', month: 'Jan' },
-    { day: '8', label: 'Thu', month: 'Jan' },
-    { day: '9', label: 'Fri', month: 'Jan' },
-    { day: '10', label: 'Sat', month: 'Jan' },
-    { day: '11', label: 'Sun', month: 'Jan' },
-  ];
-
-  const timeSlots = [
-    '09:00 AM',
-    '10:00 AM',
-    '11:00 AM',
-    '12:00 PM',
-    '02:00 PM',
-    '03:00 PM',
-    '04:00 PM',
-    '05:00 PM',
-  ];
-
   const handleBooking = async () => {
   if (!selectedStaff || !selectedDate || !selectedTime || !reason) {
     Alert.alert('Error', 'Please fill all required fields');
@@ -89,12 +144,20 @@ export default function Calendar({ navigation }: any) {
   const staff = staffMembers.find(s => s.id === selectedStaff);
 
   try {
-    // Save to Firestore
+    // Get user info from AsyncStorage (or use profile state)
+    const userProfile = await AsyncStorage.getItem('userProfile');
+    const user = userProfile ? JSON.parse(userProfile) : null;
+
+    const userName = user?.name || 'Amanpreet Singh';
+    const userEmail = user?.email || 'amaanpreet03@gmail.com';
+    const userPhone = user?.phone || '+91XXXXXXXXXX';
+
+    // Save appointment
     await bookAppointment({
       userId: 'USER_123',
-      userName: 'Amanpreet Singh', // TODO: Get from profile
-      userPhone: '+91XXXXXXXXXX',
-      userEmail: 'user@email.com',
+      userName: userName,
+      userPhone: userPhone,
+      userEmail: userEmail,
       staffId: selectedStaff,
       staffName: staff?.name || '',
       staffPhone: staff?.phone || '',
@@ -104,43 +167,34 @@ export default function Calendar({ navigation }: any) {
       status: 'Pending',
     });
 
-    // Send to user via WhatsApp
-    await shareAppointmentToWhatsApp(
+    // Send email with dynamic user info
+    const emailSent = await sendAppointmentEmail(
+      userName,              // Uses actual user name
+      userEmail,             // Uses actual user email
       staff?.name || '',
       selectedDate,
       selectedTime,
       reason
     );
 
-    // Send to council member
-    await shareAppointmentToWhatsApp(
-      `Appointment Request from Amanpreet Singh`,
-      selectedDate,
-      selectedTime,
-      reason,
-      staff?.phone
-    );
-
-    // Send email confirmation
-    await sendAppointmentEmail(
-      'user@email.com',
-      staff?.name || '',
-      selectedDate,
-      selectedTime,
-      reason
-    );
-
-    Alert.alert(
-      'Success',
-      'Appointment booked! Confirmation sent via WhatsApp and email.',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
-
+    if (emailSent) {
+      Alert.alert(
+        '✅ Success!',
+        `Appointment booked! Confirmation email sent to ${userEmail}`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } else {
+      Alert.alert(
+        'Appointment Booked',
+        'Appointment saved successfully, but email failed to send.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    }
   } catch (error) {
-    Alert.alert('Error', 'Failed to book appointment');
+    console.error('Booking error:', error);
+    Alert.alert('Error', 'Failed to book appointment. Please try again.');
   }
 };
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1a2456" />

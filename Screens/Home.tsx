@@ -1,8 +1,8 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-
-import { getActivities, Activity } from '../Api/activitymanger';
+import { getRecentActivities, Activity } from '../Api/activitymanger';
+import { getCurrentUser } from '../Api/userService';
 import { 
   StyleSheet, 
   Text, 
@@ -17,37 +17,81 @@ import ImageSlider from '../Components/slider';
 import Button from '../Components/Button';
 
 export default function Home({ navigation }: any) {
-    const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [userName, setUserName] = useState('User');
+
+  // Load user name
+  useEffect(() => {
+    loadUserName();
+  }, []);
+
+  const loadUserName = async () => {
+    try {
+      const user = await getCurrentUser();
+      if (user) {
+        setUserName(user.name);
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
 
   // Load activities when screen comes into focus
-    useFocusEffect(
+  useFocusEffect(
     React.useCallback(() => {
       loadActivities();
     }, [])
   );
 
   const loadActivities = async () => {
-    const recentActivities = await getActivities(5); // Get last 5 activities
-    setActivities(recentActivities);
+    try {
+      const recentActivities = await getRecentActivities();
+      console.log('📊 Loaded activities:', recentActivities.length);
+      setActivities(recentActivities);
+    } catch (error) {
+      console.error('Error loading activities:', error);
+      setActivities([]);
+    }
   };
+
+  // Format timestamp to readable date
+  const formatDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+      return `${diffInMinutes}m ago`;
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)}h ago`;
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1a2456" />
-        
-        {/* Add paddingTop to header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome back</Text>
-            <Text style={styles.userName}>Amanpreet Singh</Text>
-          </View>
+      <StatusBar barStyle="light-content" backgroundColor="#1a2456" />
+      
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Welcome back</Text>
+          <Text style={styles.userName}>{userName}</Text>
+        </View>
         <TouchableOpacity 
           style={styles.profileButton}
-          onPress={() => navigation.navigate('Profile')}  // ADD THIS
+          onPress={() => navigation.navigate('Profile')}
         >
           <MaterialCommunityIcons name="account-circle" size={40} color="#fff" />
         </TouchableOpacity>
-        </View>
-
+      </View>
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
@@ -100,19 +144,28 @@ export default function Home({ navigation }: any) {
           </View>
         </View>
 
-       {/* Recent Activity Section */}
+        {/* Recent Activity Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('AllActivities')}>
+            <TouchableOpacity onPress={() => {
+              // Navigate to all activities or show message
+              if (activities.length > 0) {
+                // You can create an AllActivities screen later
+                console.log('View all activities');
+              }
+            }}>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
 
           {activities.length === 0 ? (
             <View style={styles.emptyActivity}>
-              <MaterialCommunityIcons name="history" size={40} color="#ccc" />
+              <MaterialCommunityIcons name="history" size={48} color="#ccc" />
               <Text style={styles.emptyText}>No recent activity</Text>
+              <Text style={styles.emptySubtext}>
+                Your reports, appointments, and applications will appear here
+              </Text>
             </View>
           ) : (
             activities.map((activity) => (
@@ -129,7 +182,26 @@ export default function Home({ navigation }: any) {
                   <Text style={styles.activityDescription} numberOfLines={2}>
                     {activity.description}
                   </Text>
-                  <Text style={styles.activityDate}>{activity.date}</Text>
+                  <View style={styles.activityFooter}>
+                    <View style={[styles.statusBadge, { 
+                      backgroundColor: activity.status === 'Resolved' || activity.status === 'Approved' 
+                        ? '#E8F5E9' 
+                        : activity.status === 'Pending' || activity.status === 'Submitted'
+                        ? '#FFF3E0'
+                        : '#E3F2FD'
+                    }]}>
+                      <Text style={[styles.statusText, {
+                        color: activity.status === 'Resolved' || activity.status === 'Approved' 
+                          ? '#2E7D32' 
+                          : activity.status === 'Pending' || activity.status === 'Submitted'
+                          ? '#E65100'
+                          : '#1565C0'
+                      }]}>
+                        {activity.status}
+                      </Text>
+                    </View>
+                    <Text style={styles.activityDate}>{formatDate(activity.timestamp)}</Text>
+                  </View>
                 </View>
               </View>
             ))
@@ -145,15 +217,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
- header: {
-  backgroundColor: '#1a2456',
-  paddingTop: 48,  // Add this - pushes header down from status bar
-  paddingBottom: 20,
-  paddingHorizontal: 20,
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
- },
+  header: {
+    backgroundColor: '#1a2456',
+    paddingTop: 48,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   greeting: {
     color: '#fff',
     fontSize: 14,
@@ -173,14 +245,13 @@ const styles = StyleSheet.create({
   },
   sliderContainer: {
     padding: 20,
-    
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1a2456',
     marginBottom: 12,
-    paddingTop: 10
+    paddingTop: 10,
   },
   quickActions: {
     padding: 20,
@@ -195,16 +266,46 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 6,
   },
-  recentActivity: {
+  section: {
     padding: 20,
-    paddingTop: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  viewAll: {
+    fontSize: 14,
+    color: '#252d6e',
+    fontWeight: '600',
+  },
+  emptyActivity: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    elevation: 2,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   activityCard: {
     backgroundColor: '#fff',
     padding: 16,
     borderRadius: 12,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
@@ -212,13 +313,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
-  activityIconContainer: {
+  activityIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   activityContent: {
@@ -230,63 +330,28 @@ const styles = StyleSheet.create({
     color: '#1a2456',
     marginBottom: 4,
   },
-  activityStatus: {
-    fontSize: 13,
-    color: '#666',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    gap: 8,
-  },
-  footerText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  section: {
-    padding: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  
-  activityIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
- 
   activityDescription: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  activityFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   activityDate: {
     fontSize: 12,
     color: '#999',
-  },
-  emptyActivity: {
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 10,
-  },
-  viewAll: {
-    fontSize: 14,
-    color: '#252d6e',
-    fontWeight: '600',
   },
 });

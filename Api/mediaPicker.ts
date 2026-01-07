@@ -1,8 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
-import { storage } from '../firebaseConfig';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Request camera permissions
 export const requestCameraPermission = async () => {
@@ -91,31 +89,13 @@ export const showImagePicker = async (): Promise<string | null> => {
   });
 };
 
-// Upload image to Firebase Storage
+// Local "upload" - just returns the URI (no actual upload)
 export const uploadImageToFirebase = async (
   uri: string,
   folder: string = 'images'
 ): Promise<string | null> => {
-  try {
-    // Convert URI to blob
-    const response = await fetch(uri);
-    const blob = await response.blob();
-
-    // Create unique filename
-    const filename = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-    const storageRef = ref(storage, filename);
-
-    // Upload
-    await uploadBytes(storageRef, blob);
-
-    // Get download URL
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    Alert.alert('Upload Error', 'Failed to upload image. Please try again.');
-    return null;
-  }
+  console.log('📸 Image saved locally:', uri);
+  return uri; // Return local URI
 };
 
 // Pick document (PDF, etc.)
@@ -143,25 +123,12 @@ export const pickDocument = async () => {
   }
 };
 
-// Upload document to Firebase Storage
+// Local "upload" for documents
 export const uploadDocumentToFirebase = async (
   uri: string,
   filename: string,
   folder: string = 'documents'
 ): Promise<string | null> => {
-  try {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-
-    const storagePath = `${folder}/${Date.now()}_${filename}`;
-    const storageRef = ref(storage, storagePath);
-
-    await uploadBytes(storageRef, blob);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error) {
-    console.error('Error uploading document:', error);
-    Alert.alert('Upload Error', 'Failed to upload document. Please try again.');
-    return null;
-  }
+  console.log('📄 Document saved locally:', uri);
+  return uri; // Return local URI
 };

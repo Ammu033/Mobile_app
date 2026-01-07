@@ -1,16 +1,4 @@
-import { db } from '../firebaseConfig';
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  doc,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  onSnapshot,
-  Timestamp,
-} from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Application {
   id?: string;
@@ -23,100 +11,99 @@ export interface Application {
   email: string;
   address: string;
   pincode: string;
-  documents: string[]; // URLs of uploaded documents
+  documents: string[];
   status: 'Submitted' | 'Reviewing' | 'Approved' | 'Rejected';
   createdAt: Date;
   updatedAt: Date;
   remarks?: string;
 }
 
-// Submit new application
+const STORAGE_KEY = 'applications';
+
+const getAllApplications = async (): Promise<Application[]> => {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!data) return [];
+    const apps = JSON.parse(data);
+    return apps.map((a: any) => ({
+      ...a,
+      createdAt: new Date(a.createdAt),
+      updatedAt: new Date(a.updatedAt),
+    }));
+  } catch (error) {
+    return [];
+  }
+};
+
 export const submitApplication = async (
   application: Omit<Application, 'id' | 'createdAt' | 'updatedAt'>
 ) => {
   try {
-    const docRef = await addDoc(collection(db, 'applications'), {
+    const applications = await getAllApplications();
+    const newApp: Application = {
       ...application,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    return docRef.id;
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    applications.unshift(newApp);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
+    console.log('✅ Application saved locally');
+    return newApp.id;
   } catch (error) {
     console.error('Error submitting application:', error);
     throw error;
   }
 };
 
-// Get user's applications
 export const getUserApplications = async (userId: string): Promise<Application[]> => {
-  try {
-    const q = query(
-      collection(db, 'applications'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const applications: Application[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      applications.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Application);
-    });
-    
-    return applications;
-  } catch (error) {
-    console.error('Error getting applications:', error);
-    throw error;
-  }
+  const all = await getAllApplications();
+  return all.filter((a) => a.userId === userId);
 };
 
-// Subscribe to application updates
 export const subscribeToApplications = (
   userId: string,
   callback: (applications: Application[]) => void
 ) => {
-  const q = query(
-    collection(db, 'applications'),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
-  );
-
-  return onSnapshot(q, (snapshot) => {
-    const applications: Application[] = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      applications.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Application);
-    });
-    callback(applications);
-  });
+  getUserApplications(userId).then(callback);
+  return () => {};
 };
 
-// Update application status (for admin)
 export const updateApplicationStatus = async (
   applicationId: string,
   status: 'Submitted' | 'Reviewing' | 'Approved' | 'Rejected',
   remarks?: string
 ) => {
   try {
-    const appRef = doc(db, 'applications', applicationId);
-    await updateDoc(appRef, {
-      status,
-      remarks: remarks || '',
-      updatedAt: Timestamp.now(),
-    });
+    const applications = await getAllApplications();
+    const index = applications.findIndex((a) => a.id === applicationId);
+    if (index !== -1) {
+      applications[index].status = status;
+      applications[index].remarks = remarks || '';
+      applications[index].updatedAt = new Date();
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
+    }
   } catch (error) {
     console.error('Error updating application:', error);
+    throw error;
+  }
+};
+
+export const deleteApplication = async (applicationId: string) => {
+  try {
+    console.log('🗑️ Deleting application:', applicationId);
+    
+    const applications = await getAllApplications();
+    const filtered = applications.filter((a) => a.id !== applicationId);
+    
+    console.log(`📊 Applications before: ${applications.length}, after: ${filtered.length}`);
+    
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    console.log('✅ Application deleted successfully');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error deleting application:', error);
     throw error;
   }
 };
