@@ -3,9 +3,9 @@ import { View, Image, StyleSheet, TouchableOpacity  } from "react-native";
 import Swiper from "react-native-swiper";
 
 const imagesData = [
-  require("../assets/1.png"),
-  require("../assets/1.png"),
-  require("../assets/1.png"),
+  require("../assets/happy-dussehra-wishing-greeeting-card-with-vector-illustration_632231-1509.jpg"),
+  require("../assets/camp.png"),
+  require("../assets/panch.png"),
 ];
 interface imageclick {
     onPress?: ()=> void;

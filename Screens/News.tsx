@@ -8,9 +8,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { shareEvent } from '../Api/shareUtils';
+import { handleAddCalendar } from '../Api/AddCalender';
+
 
 interface Event {
   id: string;
@@ -30,24 +33,24 @@ export default function News({ navigation }: any) {
     {
       id: '1',
       title: 'Dussehra Fair 2026',
-      date: 'October 10, 2026',
+      date: 'October 20, 2026',
       time: '10:00 AM - 8:00 PM',
       location: 'Village Ground',
       description:
         'Annual Dussehra fair with cultural programs, food stalls, and traditional games. All villagers are invited to participate.',
       category: 'event',
-      image: require('../assets/1.png'),
+      image: require('../assets/happy-dussehra-wishing-greeeting-card-with-vector-illustration_632231-1509.jpg'),
     },
     {
       id: '2',
       title: 'Community Health Camp',
-      date: 'January 15, 2026',
+      date: 'January 22, 2026',
       time: '9:00 AM - 4:00 PM',
       location: 'Panchayat Bhawan',
       description:
         'Free health checkup camp organized by Punjab Health Department. Blood pressure, diabetes screening, and general consultation available.',
       category: 'event',
-      image: require('../assets/1.png'),
+      image: require('../assets/camp.png'),
     },
     {
       id: '3',
@@ -58,7 +61,7 @@ export default function News({ navigation }: any) {
       description:
         'Quarterly gram sabha meeting to discuss village development plans, budget allocation, and community concerns.',
       category: 'event',
-      image: require('../assets/1.png'),
+      image: require('../assets/panch.png'),
     },
   ];
 
@@ -72,38 +75,64 @@ export default function News({ navigation }: any) {
       description:
         'Government grant for street light installation has been received. Work will commence from January 10, 2026 in Phase 1 areas (Main Road, School Street).',
       category: 'notice',
+      image: require('../assets/street light.webp')
     },
     {
       id: '2',
       title: 'Water Supply Maintenance',
-      date: 'January 4, 2026',
-      time: '',
-      location: '',
+      date: 'January 30, 2026',
+      time: '7:00 am - 4:00 pm',
+      location: 'Sectors A & B',
       description:
-        'Water supply will be temporarily disrupted on January 8, 2026 from 10 AM to 4 PM due to pipeline maintenance in Sectors A & B.',
+        'Water supply will be temporarily disrupted on January 30, 2026 from 7:00 AM to 4 PM due to pipeline maintenance in Sectors A & B.',
       category: 'notice',
+      image: require('../assets/leaking-pipe.webp')
     },
     {
       id: '3',
       title: 'Pension Disbursement Schedule',
       date: 'December 28, 2025',
-      time: '',
-      location: '',
+      time: '9:00 am - 5:00 pm',
+      location: 'Post office',
       description:
         'Pension for Q4 2025 will be disbursed from January 5-10, 2026. Beneficiaries can collect from Panchayat office during working hours.',
       category: 'notice',
+      image: require('../assets/pension.webp')
     },
     {
       id: '4',
       title: 'New Road Construction',
       date: 'December 20, 2025',
-      time: '',
-      location: '',
+      time: '7:00 am - 6:00 pm',
+      location: 'Gurudwara road',
       description:
         'Tender awarded for construction of new road connecting East Village to Main Highway. Expected completion: March 2026.',
       category: 'announcement',
+      image: require('../assets/cons.webp')
     },
   ];
+  const handleAddToCalendar = (event: Event) => {
+      Alert.alert(
+        'Add to Calendar',
+        'This will add the event to your device calendar.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Add',
+            onPress: async () => {
+              await handleAddCalendar(
+                event.title,
+                event.date,
+                event.time,
+                event.location,
+                event.description
+              );
+              
+            },
+          },
+        ]
+      );
+    };
 
   const displayData = activeTab === 'events' ? events : notices;
 
@@ -117,9 +146,7 @@ export default function News({ navigation }: any) {
           <MaterialCommunityIcons name="arrow-left" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>News & Updates</Text>
-        <TouchableOpacity>
-          <MaterialCommunityIcons name="bell-outline" size={28} color="#fff" />
-        </TouchableOpacity>
+        
       </View>
 
       {/* Tab Navigation */}
@@ -228,7 +255,7 @@ export default function News({ navigation }: any) {
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
                   {item.category === 'event' && (
-                    <TouchableOpacity style={styles.actionButton}>
+                    <TouchableOpacity style={styles.actionButton} onPress ={() => handleAddToCalendar(item)} >
                       <MaterialCommunityIcons
                         name="calendar-plus"
                         size={18}
@@ -284,6 +311,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
+    paddingRight: 75
   },
   tabContainer: {
     flexDirection: 'row',

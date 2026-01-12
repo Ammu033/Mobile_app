@@ -33,33 +33,46 @@ export default function Profile({ navigation }: any) {
   const [editedProfile, setEditedProfile] = useState<UserProfile>(profile);
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+  loadProfile();
+}, []);
 
-  const loadProfile = async () => {
-    try {
-      const saved = await AsyncStorage.getItem('userProfile');
-      if (saved) {
-        const data = JSON.parse(saved);
-        setProfile(data);
-        setEditedProfile(data);
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
+const loadProfile = async () => {
+  try {
+    const saved = await AsyncStorage.getItem('userProfile');
+    console.log('📦 Raw saved data:', saved);
+    
+    if (saved) {
+      const data = JSON.parse(saved);
+      console.log('✅ Parsed profile data:', data);
+      setProfile(data);
+      setEditedProfile(data);
+    } else {
+      console.log('❌ No saved profile found, using default');
     }
-  };
+  } catch (error) {
+    console.error('❌ Error loading profile:', error);
+  }
+};
 
-  const saveProfile = async () => {
-    try {
-      await AsyncStorage.setItem('userProfile', JSON.stringify(editedProfile));
-      setProfile(editedProfile);
-      setIsEditing(false);
-      Alert.alert('Success', 'Profile updated successfully!');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Failed to save profile');
-    }
-  };
+
+
+const saveProfile = async () => {
+  try {
+    console.log('💾 Saving profile:', editedProfile);
+    await AsyncStorage.setItem('userProfile', JSON.stringify(editedProfile));
+    
+    // Verify it was saved
+    const verify = await AsyncStorage.getItem('userProfile');
+    console.log('✅ Verified saved data:', verify);
+    
+    setProfile(editedProfile);
+    setIsEditing(false);
+    Alert.alert('Success', 'Profile updated successfully!');
+  } catch (error) {
+    console.error('❌ Error saving profile:', error);
+    Alert.alert('Error', 'Failed to save profile');
+  }
+};
 
   const handleLogout = () => {
     Alert.alert(
@@ -122,6 +135,7 @@ export default function Profile({ navigation }: any) {
             <Text style={styles.profilePhone}>{profile.phone}</Text>
           </View>
 
+
           {/* Profile Completion */}
           <View style={styles.completionCard}>
             <View style={styles.completionHeader}>
@@ -146,6 +160,7 @@ export default function Profile({ navigation }: any) {
               <View style={styles.infoRow}>
                 <MaterialCommunityIcons name="account" size={24} color="#252d6e" />
                 <View style={styles.infoContent}>
+                  
                   <Text style={styles.infoLabel}>Full Name</Text>
                   {isEditing ? (
                     <TextInput
@@ -172,7 +187,6 @@ export default function Profile({ navigation }: any) {
                       value={editedProfile.phone}
                       onChangeText={(text) => setEditedProfile({...editedProfile, phone: text})}
                       placeholder="Enter phone number"
-                      keyboardType="phone-pad"
                     />
                   ) : (
                     <Text style={styles.infoValue}>{profile.phone}</Text>

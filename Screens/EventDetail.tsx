@@ -8,8 +8,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
+  Alert, Linking, Platform
 } from 'react-native';
+import {handleAddCalendar} from '../Api/AddCalender'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { shareEvent } from '../Api/shareUtils';
 
@@ -18,33 +19,7 @@ export default function EventDetail({ route, navigation }: any) {
   const [isAttending, setIsAttending] = useState(false);
   const [attendeeCount, setAttendeeCount] = useState(42); // Mock count
 
-  const handleRSVP = () => {
-    if (isAttending) {
-      Alert.alert(
-        'Cancel RSVP',
-        'Are you sure you want to cancel your registration?',
-        [
-          { text: 'No', style: 'cancel' },
-          {
-            text: 'Yes, Cancel',
-            onPress: () => {
-              setIsAttending(false);
-              setAttendeeCount(attendeeCount - 1);
-              Alert.alert('Cancelled', 'Your registration has been cancelled.');
-            },
-          },
-        ]
-      );
-    } else {
-      setIsAttending(true);
-      setAttendeeCount(attendeeCount + 1);
-      Alert.alert(
-        'Success!',
-        'You are registered for this event. A reminder will be sent before the event.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
+  
 
   const handleShare = async () => {
     await shareEvent(
@@ -55,7 +30,9 @@ export default function EventDetail({ route, navigation }: any) {
       event.description
     );
   };
+ 
 
+ 
   const handleAddToCalendar = () => {
     Alert.alert(
       'Add to Calendar',
@@ -64,9 +41,15 @@ export default function EventDetail({ route, navigation }: any) {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Add',
-          onPress: () => {
-            // TODO: Implement calendar integration
-            Alert.alert('Success', 'Event added to calendar!');
+          onPress: async () => {
+            await handleAddCalendar(
+              event.title,
+              event.date,
+              event.time,
+              event.location,
+              event.description
+            );
+            
           },
         },
       ]
@@ -74,20 +57,43 @@ export default function EventDetail({ route, navigation }: any) {
   };
 
   const handleGetDirections = () => {
-    Alert.alert(
-      'Get Directions',
-      `Open maps to navigate to: ${event.location}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open Maps',
-          onPress: () => {
-            // TODO: Open maps app with location
-          },
+  Alert.alert(
+    'Get Directions',
+    `Open maps to navigate to: ${event.location}?`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Open Maps',
+        onPress: () => {
+          const address = encodeURIComponent(event.location);
+          
+          // Different URLs for iOS and Android
+          const url = Platform.select({
+            ios: `maps://app?daddr=${address}`,
+            android: `google.navigation:q=${address}`,
+          });
+          
+          // Fallback to browser-based Google Maps
+          const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${address}`;
+          
+          Linking.canOpenURL(url!)
+            .then((supported) => {
+              if (supported) {
+                return Linking.openURL(url!);
+              } else {
+                // Use web-based Google Maps as fallback
+                return Linking.openURL(fallbackUrl);
+              }
+            })
+            .catch((err) => {
+              console.error('Error opening maps:', err);
+              Alert.alert('Error', 'Could not open maps');
+            });
         },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -117,24 +123,6 @@ export default function EventDetail({ route, navigation }: any) {
               <Text style={styles.categoryText}>{event.category.toUpperCase()}</Text>
             </View>
             <Text style={styles.title}>{event.title}</Text>
-
-            {/* Attendees */}
-            <View style={styles.attendeesRow}>
-              <View style={styles.avatarStack}>
-                <View style={[styles.miniAvatar, { left: 0 }]}>
-                  <MaterialCommunityIcons name="account" size={16} color="#fff" />
-                </View>
-                <View style={[styles.miniAvatar, { left: 15 }]}>
-                  <MaterialCommunityIcons name="account" size={16} color="#fff" />
-                </View>
-                <View style={[styles.miniAvatar, { left: 30 }]}>
-                  <MaterialCommunityIcons name="account" size={16} color="#fff" />
-                </View>
-              </View>
-              <Text style={styles.attendeesText}>
-                {attendeeCount} people attending
-              </Text>
-            </View>
           </View>
 
           {/* Event Details */}
@@ -149,33 +137,37 @@ export default function EventDetail({ route, navigation }: any) {
               </View>
             </View>
 
-            <View style={styles.detailRow}>
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons
-                  name="clock-outline"
-                  size={24}
-                  color="#252d6e"
-                />
+            {event.time && (
+              <View style={styles.detailRow}>
+                <View style={styles.iconContainer}>
+                  <MaterialCommunityIcons
+                    name="clock-outline"
+                    size={24}
+                    color="#252d6e"
+                  />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Time</Text>
+                  <Text style={styles.detailValue}>{event.time}</Text>
+                </View>
               </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Time</Text>
-                <Text style={styles.detailValue}>{event.time}</Text>
-              </View>
-            </View>
+            )}
 
-            <TouchableOpacity
-              style={styles.detailRow}
-              onPress={handleGetDirections}
-            >
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="map-marker" size={24} color="#252d6e" />
-              </View>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Location</Text>
-                <Text style={styles.detailValue}>{event.location}</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
-            </TouchableOpacity>
+            {event.location && (
+              <TouchableOpacity
+                style={styles.detailRow}
+                onPress={handleGetDirections}
+              >
+                <View style={styles.iconContainer}>
+                  <MaterialCommunityIcons name="map-marker" size={24} color="#252d6e" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Location</Text>
+                  <Text style={styles.detailValue}>{event.location}</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Description */}
@@ -185,58 +177,28 @@ export default function EventDetail({ route, navigation }: any) {
           </View>
 
           {/* Action Buttons */}
-          <View style={styles.actionSection}>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={handleAddToCalendar}
-            >
-              <MaterialCommunityIcons
-                name="calendar-plus"
-                size={20}
-                color="#252d6e"
-              />
-              <Text style={styles.secondaryButtonText}>Add to Calendar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                isAttending && styles.primaryButtonActive,
-              ]}
-              onPress={handleRSVP}
-            >
-              <MaterialCommunityIcons
-                name={isAttending ? "check-circle" : "ticket"}
-                size={20}
-                color="#fff"
-              />
-              <Text style={styles.primaryButtonText}>
-                {isAttending ? "I'm Attending" : 'Register for Event'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Organizer Info */}
-          <View style={styles.organizerSection}>
-            <Text style={styles.sectionTitle}>Organized By</Text>
-            <View style={styles.organizerCard}>
-              <View style={styles.organizerAvatar}>
-                <MaterialCommunityIcons name="town-hall" size={32} color="#252d6e" />
-              </View>
-              <View style={styles.organizerInfo}>
-                <Text style={styles.organizerName}>Gram Panchayat Office</Text>
-                <Text style={styles.organizerRole}>Village Council</Text>
-              </View>
-              <TouchableOpacity style={styles.contactButton}>
-                <MaterialCommunityIcons name="phone" size={20} color="#252d6e" />
+          {event.category === 'event' && (
+            <View style={styles.actionSection}>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={handleAddToCalendar}
+              >
+                <MaterialCommunityIcons
+                  name="calendar-plus"
+                  size={20}
+                  color="#252d6e"
+                />
+                <Text style={styles.secondaryButtonText}>Add to Calendar</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          )}
+
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+          
 
 const styles = StyleSheet.create({
   container: {

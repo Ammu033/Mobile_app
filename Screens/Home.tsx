@@ -15,16 +15,15 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ImageSlider from '../Components/slider';
 import Button from '../Components/Button';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 export default function Home({ navigation }: any) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [userName, setUserName] = useState('User');
 
   // Load user name
-  useEffect(() => {
-    loadUserName();
-  }, []);
-
+ 
   const loadUserName = async () => {
     try {
       const user = await getCurrentUser();
@@ -36,6 +35,29 @@ export default function Home({ navigation }: any) {
     }
   };
 
+  useEffect(() => {
+  const initializeUser = async () => {
+    await migrateUserData();
+    await loadUserName();
+  };
+  
+  initializeUser();
+  }, []);
+
+const migrateUserData = async () => {
+  try {
+    const userProfile = await AsyncStorage.getItem('userProfile');
+    const currentUser = await AsyncStorage.getItem('currentUser');
+    
+    // If userProfile exists but currentUser doesn't, copy it
+    if (userProfile && !currentUser) {
+      await AsyncStorage.setItem('currentUser', userProfile);
+      console.log('✅ Migrated userProfile to currentUser');
+    }
+  } catch (error) {
+    console.error('Migration error:', error);
+  }
+};
   // Load activities when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {

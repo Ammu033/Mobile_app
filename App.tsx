@@ -1,6 +1,5 @@
 import 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import Home from './Screens/Home';
@@ -11,8 +10,8 @@ import Calendar from './Screens/calender';
 import Profile from './Screens/Profile';
 import EventDetail from './Screens/EventDetail';
 import Login from './Screens/Login';
-import OTPVerify from './Api/OtpVerify';
-import ProfileSetup from './Api/Profilesetup';
+import OTPVerify from './Screens/OtpVerify';
+import ProfileSetup from './Screens/Profilesetup';
 import Verification from './Screens/Verification';
 
 const Stack = createStackNavigator();
@@ -21,13 +20,14 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator 
-        initialRouteName="Login"
+        // 
+        
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Login" component={Login} />
+        {/* <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="OTPVerify" component={OTPVerify} />  
         <Stack.Screen name="Verification" component={Verification} />
-        <Stack.Screen name="ProfileSetup" component={ProfileSetup} />
+        <Stack.Screen name="ProfileSetup" component={ProfileSetup} /> */}
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="Profile" component={Profile} />
         <Stack.Screen name="Calendar" component={Calendar} />
