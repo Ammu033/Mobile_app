@@ -8,7 +8,7 @@ export interface Report {
   description: string;
   postcode: string;
   imageUrl?: string;
-  status: 'Pending' | 'In Progress' | 'Resolved';
+  status: 'Pending' | 'Reviewing' | 'In Progress' | 'Resolved';
   progress: number;
   createdAt: Date;
   updatedAt: Date;
@@ -71,24 +71,26 @@ export const subscribeToReports = (
 // Update report status
 export const updateReportStatus = async (
   reportId: string,
-  status: 'Pending' | 'In Progress' | 'Resolved',
-  progress: number
+  status: 'Pending' | 'Reviewing' | 'In Progress' | 'Resolved', // Add 'Reviewing'
+  progress?: number // Make progress optional
 ) => {
   try {
     const reports = await getAllReports();
     const index = reports.findIndex((r) => r.id === reportId);
     if (index !== -1) {
       reports[index].status = status;
-      reports[index].progress = progress;
+      if (progress !== undefined) {
+        reports[index].progress = progress;
+      }
       reports[index].updatedAt = new Date();
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+      console.log(`✅ Report ${reportId} status updated to ${status}`);
     }
   } catch (error) {
     console.error('Error updating report:', error);
     throw error;
   }
 };
-
 // Delete report
 
 export const deleteReport = async (reportId: string) => {

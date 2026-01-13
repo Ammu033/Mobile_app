@@ -21,6 +21,7 @@ import { shareReportToWhatsApp } from '../Api/shareUtils';
 import { getCurrentUser } from '../Api/userService';
 import { updateActivityStatus } from '../Api/activitymanger';
 import { deleteReport } from '../Api/reportService';
+import { updateReportStatus, getUserReports } from '../Api/reportService';
 
 export default function Report({ navigation }: any) {
   const [category, setCategory] = useState('');
@@ -119,21 +120,43 @@ export default function Report({ navigation }: any) {
 
   
   useEffect(() => {
-    // Subscribe to real-time updates
-    const loadReports = async () => {
-      const user = await getCurrentUser();
-      const userId = user?.id || 'USER_123';
+  const loadReports = async () => {
+    const user = await getCurrentUser();
+    const userId = user?.id || 'USER_123';
 
-      const unsubscribe = subscribeToReports(userId, (updatedReports) => {
-        console.log('📊 Loaded reports:', updatedReports.length);
-        setReports(updatedReports);
-      });
+    // Load reports initially
+    const initialReports = await getUserReports(userId);
+    setReports(initialReports);
 
-      return unsubscribe;
-    };
+    // Auto-update pending reports to reviewing after 30 seconds
+    initialReports.forEach((report) => {
+      if (report.status === 'Pending' && report.id) {
+        const createdAt = new Date(report.createdAt).getTime();
+        const now = Date.now();
+        const timeDiff = now - createdAt;
+        
+        if (timeDiff >= 30000) {
+          // Already past 30 seconds, update immediately
+          updateReportStatus(report.id, 'Reviewing').then(() => {
+            // Reload reports after update
+            getUserReports(userId).then(setReports);
+          });
+        } else {
+          // Schedule update after remaining time
+          const remainingTime = 30000 - timeDiff;
+          setTimeout(async () => {
+            await updateReportStatus(report.id!, 'Reviewing');
+            // Reload reports after update
+            const updated = await getUserReports(userId);
+            setReports(updated);
+          }, remainingTime);
+        }
+      }
+    });
+  };
 
-    loadReports();
-  }, []);
+  loadReports();
+}, []);
 
   const toggleExpand = (reportId: string) => {
     setExpandedReportId(expandedReportId === reportId ? null : reportId);
