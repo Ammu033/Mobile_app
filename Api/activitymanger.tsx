@@ -26,27 +26,29 @@ export const addActivity = async (
 ): Promise<void> => {
   try {
     const user = await getCurrentUser();
-    if (!user) return;
-
+    const userId = user?.id || 'USER_123'; // Fallback if no user or no id
+    
+    console.log('📝 Adding activity for user:', userId);
+    
     const activities = await getAllActivities();
-
+    
     const iconMap = {
       report: 'alert-circle',
       application: 'file-document',
       appointment: 'calendar-clock',
       event: 'calendar-star',
     };
-
+    
     const colorMap = {
       report: '#FF9800',
       application: '#2196F3',
       appointment: '#4CAF50',
       event: '#9C27B0',
     };
-
+    
     const newActivity: Activity = {
       id: `activity_${Date.now()}`,
-      userId: user.id,
+      userId: userId,
       type,
       title,
       description,
@@ -56,17 +58,20 @@ export const addActivity = async (
       color: colorMap[type],
       metadata,
     };
-
-    activities.unshift(newActivity); // Add to beginning
+    
+    activities.unshift(newActivity);
     
     // Keep only last 50 activities
     const trimmed = activities.slice(0, 50);
     
     await AsyncStorage.setItem(ACTIVITY_KEY, JSON.stringify(trimmed));
+    
+    console.log('✅ Activity added:', newActivity.id);
   } catch (error) {
     console.error('Add activity error:', error);
   }
 };
+
 
 // Get all activities for current user
 export const getAllActivities = async (): Promise<Activity[]> => {
@@ -93,10 +98,11 @@ export const getRecentActivities = async (): Promise<Activity[]> => {
     return [];
   }
 };
+ 
 
 // Update activity status
 export const updateActivityStatus = async (
-  activityId: string,
+  activityId: any,
   newStatus: string
 ): Promise<void> => {
   try {

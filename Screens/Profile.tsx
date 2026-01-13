@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UserProfile {
+  id?: string; 
   name: string;
   phone: string;
   email: string;
@@ -161,6 +162,7 @@ const saveProfile = async () => {
     
     const profileToSave = {
       ...editedProfile,
+      id: editedProfile.id || `user_${Date.now()}`, // Add unique id if missing
       profileCompleted: isProfileComplete(editedProfile)
     };
     

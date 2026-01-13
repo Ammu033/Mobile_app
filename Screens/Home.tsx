@@ -204,28 +204,13 @@ const migrateUserData = async () => {
                   <Text style={styles.activityDescription} numberOfLines={2}>
                     {activity.description}
                   </Text>
-                  <View style={styles.activityFooter}>
-                    <View style={[styles.statusBadge, { 
-                      backgroundColor: activity.status === 'Resolved' || activity.status === 'Approved' 
-                        ? '#E8F5E9' 
-                        : activity.status === 'Pending' || activity.status === 'Submitted'
-                        ? '#FFF3E0'
-                        : '#E3F2FD'
-                    }]}>
-                      <Text style={[styles.statusText, {
-                        color: activity.status === 'Resolved' || activity.status === 'Approved' 
-                          ? '#2E7D32' 
-                          : activity.status === 'Pending' || activity.status === 'Submitted'
-                          ? '#E65100'
-                          : '#1565C0'
-                      }]}>
-                        {activity.status}
-                      </Text>
+                  
+                    
+                      
                     </View>
                     <Text style={styles.activityDate}>{formatDate(activity.timestamp)}</Text>
                   </View>
-                </View>
-              </View>
+               
             ))
           )}
         </View>

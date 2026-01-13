@@ -9,11 +9,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Dimensions 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendOTPEmail } from '../Api/emailService';
+
 
 export default function OTPVerify({ route, navigation }: any) {
   const { email } = route.params;
@@ -107,16 +109,13 @@ export default function OTPVerify({ route, navigation }: any) {
           
           Alert.alert(
             '✅ Email Verified!',
-            'Would you like to complete Aadhaar verification now? (Optional)',
+            'First time? No worries! Just fill in a few details on the next page and you are all set',
             [
               {
-                text: 'Skip for Now',
+                text: 'ok',
                 onPress: () => navigation.replace('ProfileSetup', { email, skipVerification: true })
-              },
-              {
-                text: 'Verify Now',
-                onPress: () => navigation.replace('Verification', { email })
               }
+              
             ]
           );
         }
@@ -256,6 +255,8 @@ export default function OTPVerify({ route, navigation }: any) {
     </SafeAreaView>
   );
 }
+const { width } = Dimensions.get('window');
+const boxSize = Math.min((width - 100) / 6, 50);
 
 const styles = StyleSheet.create({
   container: {
@@ -320,22 +321,25 @@ const styles = StyleSheet.create({
     color: '#252d6e',
   },
   otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
+  flexDirection: 'row',
+  justifyContent: 'center',
+  gap: 6,
+  marginBottom: 24,
+  paddingHorizontal: 20,
+  // flexWrap: 'wrap', 
+},
   otpInput: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1a2456',
-  },
+  width: boxSize,
+  height: boxSize + 5,
+  borderWidth: 2,
+  borderColor: '#e0e0e0',
+  borderRadius: 12,
+  fontSize: 22,
+  fontWeight: 'bold',
+  textAlign: 'center',
+  color: '#1a2456',
+  backgroundColor: '#f5f5f5',
+},
   otpInputFilled: {
     borderColor: '#FFD700',
     backgroundColor: '#fffbf0',

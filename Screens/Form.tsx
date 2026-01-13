@@ -16,6 +16,8 @@ import { pickDocument, uploadDocumentToFirebase } from '../Api/mediaPicker';
 import { submitApplication, getUserApplications } from '../Api/applicationService';
 import { getCurrentUser } from '../Api/userService';
 import { addActivity } from '../Api/activitymanger';
+import { checkProfileCompletion} from '../Api/Profilecheck';
+
 
 interface Service {
   id: string;
@@ -36,6 +38,18 @@ export default function Form({ navigation }: any) {
     email: '',
   });
   const [uploadedDocs, setUploadedDocs] = useState<{name: string, url: string}[]>([]);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      const hasAccess = await checkProfileCompletion(navigation);
+      if (!hasAccess) {
+        navigation.goBack();
+      } else {
+        loadApplications();
+      }
+    };
+    checkAccess();
+  }, []);
 
   // Only real Punjab Government services
   const services: Service[] = [

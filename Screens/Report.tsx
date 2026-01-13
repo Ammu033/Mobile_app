@@ -22,6 +22,7 @@ import { getCurrentUser } from '../Api/userService';
 import { updateActivityStatus } from '../Api/activitymanger';
 import { deleteReport } from '../Api/reportService';
 import { updateReportStatus, getUserReports } from '../Api/reportService';
+import { checkProfileCompletion } from '../Api/Profilecheck';
 
 export default function Report({ navigation }: any) {
   const [category, setCategory] = useState('');
@@ -32,6 +33,16 @@ export default function Report({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const [reports, setReports] = useState<any[]>([]);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      const hasAccess = await checkProfileCompletion(navigation);
+      if (!hasAccess) {
+        navigation.goBack();
+      }
+    };
+    checkAccess();
+  }, []);
 
   const categories = [
     { id: 'personal', label: 'Personal', icon: 'account' },
@@ -117,6 +128,8 @@ export default function Report({ navigation }: any) {
       setLoading(false);
     }
   };
+
+  
 
   
   useEffect(() => {

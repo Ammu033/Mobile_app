@@ -15,6 +15,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { bookAppointment } from '../Api/appointmentService';
 import { shareAppointmentToWhatsApp } from '../Api/shareUtils';
 import { sendAppointmentEmail } from '../Api/emailService';
+import { checkProfileCompletion } from '../Api/Profilecheck';
+
 
 interface StaffMember {
   id: string;
@@ -31,6 +33,16 @@ export default function Calendar({ navigation }: any) {
   const [reason, setReason] = useState('');
   const [dates, setDates] = useState<any[]>([]);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      const hasAccess = await checkProfileCompletion(navigation);
+      if (!hasAccess) {
+        navigation.goBack();
+      }
+    };
+    checkAccess();
+  }, []);
 
   // Generate next 14 days dynamically
   const generateDates = () => {

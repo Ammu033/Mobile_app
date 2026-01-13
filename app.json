@@ -4,11 +4,11 @@
     "slug": "easy-ass",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/ChatGPT Image Jan 13, 2026, 04_42_30 PM.jpg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/ChatGPT Image Jan 13, 2026, 04_42_30 PM.jpg",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,14 +17,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/ChatGPT Image Jan 13, 2026, 04_42_30 PM.jpg",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     }
   }
 }

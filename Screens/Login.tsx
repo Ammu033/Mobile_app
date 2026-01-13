@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -86,7 +87,7 @@ export default function Login({ navigation }: any) {
       <StatusBar barStyle="light-content" backgroundColor="#1a2456" />
       
       <LinearGradient
-        colors={['#1a2456', '#252d6e', '#2d3787']}
+        colors={['#272c5f', '#252d6e', '#2d3787']}
         style={styles.gradient}
       >
         <KeyboardAvoidingView 
@@ -95,16 +96,20 @@ export default function Login({ navigation }: any) {
         >
           {/* Logo Section */}
           <View style={styles.logoSection}>
-            <View style={styles.logoCircle}>
-              <MaterialCommunityIcons name="domain" size={50} color="#FFD700" />
-            </View>
-            <Text style={styles.appName}>EasyAccess</Text>
-            <Text style={styles.tagline}>Gram Panchayat Services</Text>
+          <View style={styles.logoContainer}>
+            <Image 
+              source={require('../assets/icon2.png')} // Replace with your icon path
+              style={styles.appIcon}
+              resizeMode="contain"
+            />
           </View>
+          <Text style={styles.appName}>EasyAccess</Text>
+          <Text style={styles.tagline}>Gram Panchayat Services</Text>
+        </View>
 
           {/* Card Section */}
           <View style={styles.card}>
-            <Text style={styles.welcomeText}>Welcome Back!</Text>
+            <Text style={styles.welcomeText}>Welcome</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
 
             {/* Email Input */}
@@ -203,7 +208,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 14,
-    color: '#FFD700',
+    color: '#fff',
     letterSpacing: 1,
   },
   card: {
@@ -222,6 +227,17 @@ const styles = StyleSheet.create({
     color: '#1a2456',
     marginBottom: 8,
   },
+  logoContainer: {
+  width: 100,
+  height: 100,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 20,
+},
+appIcon: {
+  width: 80,
+  height: 80,
+},
   subtitle: {
     fontSize: 14,
     color: '#666',
