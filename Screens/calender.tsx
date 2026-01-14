@@ -33,6 +33,9 @@ export default function Calendar({ navigation }: any) {
   const [reason, setReason] = useState('');
   const [dates, setDates] = useState<any[]>([]);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<{[key: string]: string[]}>({});
+
+
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -88,16 +91,20 @@ export default function Calendar({ navigation }: any) {
   };
 
   // Check if time slot is available (not in the past)
-  const isTimeSlotAvailable = (date: string, time: string) => {
-    if (!date) return true;
-    
+  const isTimeSlotAvailable = (dateStr: string, time: string) => {
+  if (!dateStr || !selectedStaff) return true;
+  
+  try {
     const now = new Date();
-    const selectedDateTime = new Date(date);
+    
+    // Parse the date string (YYYY-MM-DD format)
+    const selectedDateTime = new Date(dateStr);
     
     // Parse time
     const [timeStr, period] = time.split(' ');
     let [hours, minutes] = timeStr.split(':').map(Number);
     
+    // Convert to 24-hour format
     if (period === 'PM' && hours !== 12) {
       hours += 12;
     } else if (period === 'AM' && hours === 12) {
@@ -106,10 +113,23 @@ export default function Calendar({ navigation }: any) {
     
     selectedDateTime.setHours(hours, minutes, 0, 0);
     
-    // Return true if the selected time is in the future
-    return selectedDateTime > now;
-  };
-
+    // Check if time is in the past
+    const isPast = selectedDateTime <= now;
+    if (isPast) {
+      return false;
+    }
+    
+    // Check if slot is already booked for this staff member and date
+    const dateKey = selectedDate || '';
+    const slotKey = `${selectedStaff}_${time}`;
+    const isBooked = bookedSlots[dateKey]?.includes(slotKey);
+    
+    return !isBooked;
+  } catch (error) {
+    console.error('Error checking time availability:', error);
+    return true;
+  }
+};
   useEffect(() => {
     // Generate dates and time slots on mount
     setDates(generateDates());
@@ -156,7 +176,6 @@ export default function Calendar({ navigation }: any) {
   const staff = staffMembers.find(s => s.id === selectedStaff);
 
   try {
-    // Get user info from AsyncStorage (or use profile state)
     const userProfile = await AsyncStorage.getItem('userProfile');
     const user = userProfile ? JSON.parse(userProfile) : null;
 
@@ -166,7 +185,7 @@ export default function Calendar({ navigation }: any) {
 
     // Save appointment
     await bookAppointment({
-      userId: 'USER_123',
+      userId: user?.id || 'USER_123',
       userName: userName,
       userPhone: userPhone,
       userEmail: userEmail,
@@ -176,18 +195,21 @@ export default function Calendar({ navigation }: any) {
       date: selectedDate,
       time: selectedTime,
       reason,
-      status: 'Pending',
+      status: 'Confirmed',
     });
 
-    // Send email with dynamic user info
+    // Send email
     const emailSent = await sendAppointmentEmail(
-      userName,              // Uses actual user name
-      userEmail,             // Uses actual user email
+      userName,
+      userEmail,
       staff?.name || '',
       selectedDate,
       selectedTime,
       reason
     );
+
+    // Reload booked slots
+    await loadBookedSlots();
 
     if (emailSent) {
       Alert.alert(
@@ -207,6 +229,47 @@ export default function Calendar({ navigation }: any) {
     Alert.alert('Error', 'Failed to book appointment. Please try again.');
   }
 };
+
+const loadBookedSlots = async () => {
+  try {
+    // Load all appointments from AsyncStorage
+    const appointmentsData = await AsyncStorage.getItem('appointments');
+    if (appointmentsData) {
+      const appointments = JSON.parse(appointmentsData);
+      
+      // Group by date and collect booked times
+      const bookedByDate: {[key: string]: string[]} = {};
+      
+      appointments.forEach((apt: any) => {
+        if (apt.status !== 'Cancelled') { // Only count non-cancelled appointments
+          const dateKey = apt.date; // e.g., "15 Jan"
+          if (!bookedByDate[dateKey]) {
+            bookedByDate[dateKey] = [];
+          }
+          // Add time slot as booked for this staff member and date
+          bookedByDate[dateKey].push(`${apt.staffId}_${apt.time}`);
+        }
+      });
+      
+      setBookedSlots(bookedByDate);
+      console.log('📅 Booked slots:', bookedByDate);
+    }
+  } catch (error) {
+    console.error('Error loading booked slots:', error);
+  }
+}; 
+
+useEffect(() => {
+  const checkAccess = async () => {
+    const hasAccess = await checkProfileCompletion(navigation);
+    if (!hasAccess) {
+      navigation.goBack();
+    } else {
+      await loadBookedSlots(); // Load booked appointments
+    }
+  };
+  checkAccess();
+}, []);
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1a2456" />
@@ -342,32 +405,69 @@ export default function Calendar({ navigation }: any) {
           )}
 
           {/* Time Selection */}
-          {selectedDate && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Time</Text>
-              <View style={styles.timeGrid}>
-                {timeSlots.map((time, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.timeSlot,
-                      selectedTime === time && styles.timeSlotActive,
-                    ]}
-                    onPress={() => setSelectedTime(time)}
-                  >
-                    <Text
-                      style={[
-                        styles.timeText,
-                        selectedTime === time && styles.timeTextActive,
-                      ]}
-                    >
-                      {time}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
+{selectedDate && (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>Select Time</Text>
+    <View style={styles.legendContainer}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#fff', borderColor: '#e0e0e0' }]} />
+        <Text style={styles.legendText}>Available</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#f5f5f5', borderColor: '#e0e0e0' }]} />
+        <Text style={styles.legendText}>Booked/Past</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#252d6e', borderColor: '#252d6e' }]} />
+        <Text style={styles.legendText}>Selected</Text>
+      </View>
+    </View>
+    
+    <View style={styles.timeGrid}>
+      {timeSlots.map((time, index) => {
+        const selectedDateObj = dates.find(d => `${d.day} ${d.month}` === selectedDate);
+        const isAvailable = isTimeSlotAvailable(selectedDateObj?.fullDate || '', time);
+        
+        return (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.timeSlot,
+              selectedTime === time && styles.timeSlotActive,
+              !isAvailable && styles.timeSlotDisabled,
+            ]}
+            onPress={() => {
+              if (isAvailable) {
+                setSelectedTime(time);
+              } else {
+                Alert.alert('Unavailable', 'This time slot is already booked or has passed.');
+              }
+            }}
+            disabled={!isAvailable}
+          >
+            <Text
+              style={[
+                styles.timeText,
+                selectedTime === time && styles.timeTextActive,
+                !isAvailable && styles.timeTextDisabled,
+              ]}
+            >
+              {time}
+            </Text>
+            {!isAvailable && (
+              <MaterialCommunityIcons 
+                name="close-circle" 
+                size={14} 
+                color="#F44336" 
+                style={{ marginLeft: 4 }}
+              />
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  </View>
+)}
 
           {/* Reason */}
           {selectedTime && (
@@ -518,6 +618,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 16,
   },
+  legendContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  marginBottom: 16,
+  paddingHorizontal: 10,
+},
+legendItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+},
+legendBox: {
+  width: 20,
+  height: 20,
+  borderRadius: 4,
+  borderWidth: 2,
+},
+legendText: {
+  fontSize: 12,
+  color: '#666',
+},
+timeSlotDisabled: {
+  backgroundColor: '#f5f5f5',
+  borderColor: '#e0e0e0',
+  opacity: 0.6,
+},
+timeTextDisabled: {
+  color: '#999',
+},
   staffInfo: {
     flex: 1,
   },
@@ -657,6 +786,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#4CAF50',
   },
+  
   summaryTitle: {
     fontSize: 18,
     fontWeight: 'bold',
